@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>OxyLab 3AC • Oxydation des Métaux - Cours + Jeux + Quiz</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+*{ -webkit-tap-highlight-color:transparent; }
+body{ font-family:'Segoe UI',system-ui,Arial,sans-serif; background: radial-gradient(circle at 20% 10%,#1e3a8a 0%,#0f172a 45%,#020617 100%); color:#f1f5f9; min-height:100vh; }
+.glass{ background:rgba(255,255,255,.08); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,.15); }
+.card-hover{ transition:.25s; } .card-hover:hover{ transform:translateY(-4px) scale(1.01); box-shadow:0 15px 35px rgba(0,0,0,.5); }
+.btn-pop{ transition:.15s; } .btn-pop:active{ transform:scale(.93); }
+.tab-btn.active{ background:linear-gradient(135deg,#f59e0b,#ef4444); color:white; box-shadow:0 4px 20px rgba(239,68,68,.5); }
+.flame{ width:70px; height:110px; margin:0 auto; background:radial-gradient(circle at 50% 80%,#fff 0%,#fde047 20%,#fb923c 45%,#ef4444 65%,transparent 75%); border-radius:50% 50% 50% 50% / 60% 60% 40% 40%; filter:blur(.5px); animation:flick .18s infinite alternate; transform-origin:bottom; }
+@keyframes flick{ from{ transform:scaleY(1) scaleX(1) rotate(-2deg);} to{ transform:scaleY(1.12) scaleX(.94) rotate(2deg);} }
+.spark{ position:absolute; width:6px; height:6px; border-radius:50%; pointer-events:none; animation:sparkFly 1s ease-out forwards; }
+@keyframes sparkFly{ 0%{ transform:translate(0,0) scale(1); opacity:1;} 100%{ transform:translate(var(--dx),var(--dy)) scale(0); opacity:0;} }
+.mem-card{ perspective:800px; cursor:pointer; height:90px; }
+.mem-inner{ position:relative; width:100%; height:100%; transition:transform .5s; transform-style:preserve-3d; }
+.mem-card.flipped .mem-inner{ transform:rotateY(180deg); }
+.mem-face{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; border-radius:14px; backface-visibility:hidden; font-weight:800; text-align:center; padding:6px; font-size:.9rem; }
+.mem-front{ background:linear-gradient(135deg,#334155,#0f172a); border:2px solid #38bdf8; font-size:1.8rem; }
+.mem-back{ background:linear-gradient(135deg,#f59e0b,#ef4444); color:white; transform:rotateY(180deg); border:2px solid #fff; }
+.mem-card.matched .mem-back{ background:linear-gradient(135deg,#16a34a,#059669); box-shadow:0 0 18px #22c55e; }
+.shake{ animation:shake .4s; } @keyframes shake{ 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 50%{transform:translateX(8px)} 75%{transform:translateX(-5px)} }
+.pop{ animation:pop .4s; } @keyframes pop{ 0%{transform:scale(.5)} 60%{transform:scale(1.15)} 100%{transform:scale(1)} }
+.float{ animation:floaty 3s ease-in-out infinite; } @keyframes floaty{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+.glow{ box-shadow:0 0 25px rgba(56,189,248,.6); }
+.correctFlash{ background:#16a34a !important; } .wrongFlash{ background:#dc2626 !important; }
+.confetti{ position:fixed; top:-20px; width:10px; height:14px; z-index:9999; animation:fall linear forwards; pointer-events:none; border-radius:2px; }
+@keyframes fall{ to{ transform:translateY(110vh) rotate(720deg); } }
+.accordion-body{ max-height:0; overflow:hidden; transition:max-height .5s ease; }
+.accordion.open .accordion-body{ max-height:1200px; }
+.accordion.open .arrow{ transform:rotate(180deg); } .arrow{ transition:.3s; }
+input[type=number]{ -moz-appearance:textfield; } input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{ -webkit-appearance:none; }
+#oxyCanvas{ touch-action:none; background:linear-gradient(#0ea5e9 0%,#0c4a6e 40%,#020617 100%); border-radius:16px; width:100%; }
+.badge{ font-size:.7rem; padding:2px 8px; border-radius:999px; font-weight:800; }
+.progress-anim{ transition:width .6s cubic-bezier(.4,0,.2,1); }
+.quiz-opt{ transition:.2s; } .quiz-opt:not(:disabled):hover{ transform:scale(1.02); background:rgba(56,189,248,.25); }
+@media(max-width:640px){ .mem-card{ height:78px; } .mem-face{ font-size:.75rem; } }
+</style>
+</head>
+<body class="pb-10">
+
+<!-- TOP HUD -->
+<header class="sticky top-0 z-50 glass border-b border-white/10">
+<div class="max-w-6xl mx-auto px-3 py-2 flex items-center justify-between gap-2">
+<div class="flex items-center gap-2">
+<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-2xl shadow-lg">🧪</div>
+<div><div class="font-black text-sm sm:text-lg leading-tight">OxyLab <span class="text-amber-400">3AC</span></div><div class="text-[11px] text-sky-300">Oxydation des Métaux • Programme Marocain</div></div>
+</div>
+<div class="flex items-center gap-2 text-xs sm:text-sm">
+<div class="glass rounded-full px-3 py-1 font-bold">⭐ <span id="xpVal">0</span> XP</div>
+<div class="glass rounded-full px-3 py-1 font-bold hidden sm:block">🎖️ Niv <span id="lvlVal">1</span></div>
+<button onclick="toggleSound()" id="soundBtn" class="glass rounded-full w-9 h-9 btn-pop">🔊</button>
+</div>
+</div>
+<div class="h-1.5 bg-black/40"><div id="xpBar" class="h-full bg-gradient-to-r from-amber-400 to-red-500 progress-anim" style="width:0%"></div></div>
+<nav class="max-w-6xl mx-auto px-2 py-2 flex gap-1.5 overflow-x-auto text-xs sm:text-sm font-bold">
+<button onclick="showTab('screen-home')" data-tab="screen-home" class="tab-btn active whitespace-nowrap px-3 py-2 rounded-full bg-white/10 btn-pop">🏠 Accueil</button>
+<button onclick="showTab('screen-cours')" data-tab="screen-cours" class="tab-btn whitespace-nowrap px-3 py-2 rounded-full bg-white/10 btn-pop">📚 Cours</button>
+<button onclick="showTab('screen-labo')" data-tab="screen-labo" class="tab-btn whitespace-nowrap px-3 py-2 rounded-full bg-white/10 btn-pop">🔥 Labo Virtuel</button>
+<button onclick="showTab('screen-jeux')" data-tab="screen-jeux" class="tab-btn whitespace-nowrap px-3 py-2 rounded-full bg-white/10 btn-pop">🎮 Jeux</button>
+<button onclick="showTab('screen-quiz')" data-tab="screen-quiz" class="tab-btn whitespace-nowrap px-3 py-2 rounded-full bg-white/10 btn-pop">📝 Quiz Examen</button>
+<button onclick="showTab('screen-exos')" data-tab="screen-exos" class="tab-btn whitespace-nowrap px-3 py-2 rounded-full bg-white/10 btn-pop">✅ Exercices Corrigés</button>
+</nav>
+</header>
+
+<main class="max-w-6xl mx-auto px-3 mt-3">
+
+<!-- HOME -->
+<section id="screen-home" class="tab-screen">
+<div class="glass rounded-3xl p-5 sm:p-8 text-center relative overflow-hidden">
+<div class="absolute -top-10 -right-10 text-[120px] opacity-10 select-none">⚗️</div>
+<div class="absolute -bottom-8 -left-8 text-[100px] opacity-10 select-none">🔬</div>
+<h1 class="text-2xl sm:text-4xl font-black">L'Oxydation des Métaux <span class="text-amber-400">(Fe • Al • Zn • Cu)</span></h1>
+<p class="mt-2 text-sky-200 text-sm sm:text-base">Cours complet 3<sup>ème</sup> Année Collégiale — Physique-Chimie • الأكسدة • + Labo + 4 Jeux + Quiz + Examens corrigés</p>
+<div class="mt-4 flex flex-col sm:flex-row gap-2 justify-center items-center">
+<input id="pseudoInput" maxlength="15" placeholder="Ton prénom..." class="px-4 py-2 rounded-full text-black font-bold outline-none w-56 text-center">
+<div class="flex gap-2" id="avatarChoice">
+<button onclick="chooseAvatar('Fe','⚙️')" data-av="Fe" class="avBtn w-12 h-12 rounded-full text-2xl bg-gray-500 ring-4 ring-amber-400 btn-pop">⚙️</button>
+<button onclick="chooseAvatar('Al','🥫')" data-av="Al" class="avBtn w-12 h-12 rounded-full text-2xl bg-slate-300 btn-pop">🥫</button>
+<button onclick="chooseAvatar('Zn','🔋')" data-av="Zn" class="avBtn w-12 h-12 rounded-full text-2xl bg-sky-400 btn-pop">🔋</button>
+<button onclick="chooseAvatar('Cu','🪙')" data-av="Cu" class="avBtn w-12 h-12 rounded-full text-2xl bg-orange-500 btn-pop">🪙</button>
+</div>
+</div>
+<p class="text-xs mt-1 text-slate-300">Choisis ton métal-avatar : <b id="avName">Fer (الحديد)</b></p>
+<div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-5">
+<button onclick="showTab('screen-cours')" class="card-hover bg-gradient-to-br from-sky-500 to-blue-700 rounded-2xl p-4 font-black btn-pop">📚<br>1. APPRENDRE<br><span class="text-xs font-normal">Cours + vidéos animées</span></button>
+<button onclick="showTab('screen-labo')" class="card-hover bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl p-4 font-black btn-pop">🔥<br>2. BRÛLER<br><span class="text-xs font-normal">Labo virtuel sécurisé</span></button>
+<button onclick="showTab('screen-jeux')" class="card-hover bg-gradient-to-br from-fuchsia-500 to-purple-700 rounded-2xl p-4 font-black btn-pop">🎮<br>3. JOUER<br><span class="text-xs font-normal">4 jeux corrigés</span></button>
+<button onclick="startQuizFromHome()" class="card-hover bg-gradient-to-br from-emerald-500 to-teal-700 rounded-2xl p-4 font-black btn-pop">📝<br>4. QUIZ /20<br><span class="text-xs font-normal">15 QCM examen</span></button>
+<button onclick="showTab('screen-exos')" class="card-hover bg-gradient-to-br from-amber-500 to-orange-700 rounded-2xl p-4 font-black btn-pop">✅<br>5. S'ENTRAÎNER<br><span class="text-xs font-normal">3 examens corrigés</span></button>
+<div class="card-hover bg-white/10 rounded-2xl p-4 border border-amber-400/40"><div class="font-black text-amber-300">🏆 Meilleurs scores</div><div class="text-xs mt-1">OxyCatch: <b id="bestOxy">0</b><br>Memory: <b id="bestMem">—</b><br>Quiz: <b id="bestQuiz">—</b>/20</div></div>
+</div>
+<div class="mt-4 text-left glass rounded-2xl p-4 text-sm">
+<b class="text-amber-300">🎯 Objectifs du chapitre (officiel Maroc 3AC) :</b>
+<ul class="list-disc ml-5 mt-1 space-y-1 text-slate-200">
+<li>Savoir que certains métaux (Fe, Al, Zn, Cu) réagissent avec le dioxygène O₂ : c'est l'<b>oxydation</b>.</li>
+<li>Connaître les produits : Fe₃O₄, Al₂O₃, ZnO, CuO et leurs couleurs.</li>
+<li>Équilibrer les équations et appliquer la <b>conservation de la masse (Lavoisier)</b>.</li>
+<li>Distinguer couche protectrice (Al, Zn) et corrosion / rouille du fer.</li>
+<li>Connaître les moyens de protection contre l'oxydation.</li>
+</ul>
+</div>
+</div>
+</section>
+
+<!-- COURS -->
+<section id="screen-cours" class="tab-screen hidden">
+<div class="glass rounded-3xl p-4 sm:p-6">
+<h2 class="text-xl sm:text-2xl font-black text-center">📚 Cours Complet : Oxydation à chaud et à froid</h2>
+<p class="text-center text-xs text-sky-300">Clique sur chaque leçon • Retiens les équations • Gagne +10 XP par leçon lue</p>
+<div class="mt-3 space-y-3" id="coursList">
+
+<div class="accordion glass rounded-2xl overflow-hidden">
+<button onclick="toggleAcc(this);addXP(5)" class="w-full text-left p-4 font-black flex justify-between items-center bg-white/5">I. C'est quoi l'oxydation ? (مفهوم الأكسدة) <span class="arrow">⬇️</span></button>
+<div class="accordion-body"><div class="p-4 text-sm space-y-2">
+<p>💡 <b>Définition :</b> L'<b>oxydation</b> d'un métal est sa <b>réaction chimique avec le dioxygène O₂</b> de l'air. Elle donne un <b>oxyde métallique</b>.</p>
+<div class="bg-black/40 rounded-xl p-3 text-center font-bold text-amber-300">MÉTAL + DIOXYGÈNE → OXYDE MÉTALLIQUE</div>
+<p>Exemple : Fer + Dioxygène → Oxyde magnétique. On la réalise en chauffant une laine / poudre / lame métallique dans une flamme puis plongée dans O₂ pur.</p>
+<p>⚖️ <b>Loi de Lavoisier :</b> <i>« Rien ne se perd, rien ne se crée »</i> → la masse se conserve, on doit <b>équilibrer</b> l'équation.</p>
+<button onclick="markLesson(this)" class="bg-emerald-600 px-3 py-1 rounded-full font-bold text-xs btn-pop">✓ J'ai compris (+10 XP)</button>
+</div></div>
+</div>
+
+<div class="accordion glass rounded-2xl overflow-hidden">
+<button onclick="toggleAcc(this)" class="w-full text-left p-4 font-black flex justify-between items-center bg-orange-500/20">II. Combustion du FER : Fe (الحديد) <span class="arrow">⬇️</span></button>
+<div class="accordion-body"><div class="p-4 text-sm space-y-2">
+<div class="flex gap-3 items-center"><div class="text-5xl float">⚙️</div><div><b>Expérience :</b> Laine de fer chauffée → étincelles ✨, boule incandescente qui fond et tombe. Dans O₂ pur : combustion vive.<br><b>Produit :</b> boule grise-noire <b>attirée par l'aimant</b> 🧲 = <b>Oxyde magnétique Fe₃O₄</b>.</div></div>
+<div class="bg-black/50 rounded-xl p-3 text-center"><div class="font-black text-orange-300 text-lg">3 Fe + 2 O₂ → Fe₃O₄</div><div class="text-xs text-slate-300">Gris brillant → Noir magnétique • Masse produit > masse fer (O incorporé)</div></div>
+<p>🧲 <b>Test :</b> Fe₃O₄ est magnétique. À froid humide : le fer <b>rouille</b> (Fe₂O₃·xH₂O, poreuse, ne protège pas).</p>
+<button onclick="goLab('Fe')" class="bg-orange-600 px-3 py-1 rounded-full font-bold text-xs btn-pop">🔥 Tester au Labo</button> <button onclick="markLesson(this)" class="bg-emerald-600 px-3 py-1 rounded-full font-bold text-xs btn-pop">✓ +10 XP</button>
+</div></div>
+</div>
+
+<div class="accordion glass rounded-2xl overflow-hidden">
+<button onclick="toggleAcc(this)" class="w-full text-left p-4 font-black flex justify-between items-center bg-slate-400/20">III. Combustion de l'ALUMINIUM : Al (الألومنيوم) <span class="arrow">⬇️</span></button>
+<div class="accordion-body"><div class="p-4 text-sm space-y-2">
+<div class="flex gap-3 items-center"><div class="text-5xl float">🥫</div><div><b>Expérience :</b> Poudre d'aluminium → <b>lumière blanche éblouissante</b> ⚡ (flash). Ne pas regarder directement !<br><b>Produit :</b> poudre blanche = <b>Alumine Al₂O₃</b>.</div></div>
+<div class="bg-black/50 rounded-xl p-3 text-center"><div class="font-black text-yellow-200 text-lg">4 Al + 3 O₂ → 2 Al₂O₃</div><div class="text-xs">Poudre grise → Poudre blanche • Couche <b>compacte et protectrice</b> ✅</div></div>
+<p>🛡️ Alumine forme une couche imperméable qui <b>protège</b> l'aluminium de la corrosion. D'où son usage (avions, fenêtres).</p>
+<button onclick="goLab('Al')" class="bg-slate-500 px-3 py-1 rounded-full font-bold text-xs btn-pop">🔥 Tester au Labo</button> <button onclick="markLesson(this)" class="bg-emerald-600 px-3 py-1 rounded-full font-bold text-xs btn-pop">✓ +10 XP</button>
+</div></div>
+</div>
+
+<div class="accordion glass rounded-2xl overflow-hidden">
+<button onclick="toggleAcc(this)" class="w-full text-left p-4 font-black flex justify-between items-center bg-sky-500/20">IV. Combustion du ZINC : Zn (الزنك) <span class="arrow">⬇️</span></button>
+<div class="accordion-body"><div class="p-4 text-sm space-y-2">
+<div class="flex gap-3 items-center"><div class="text-5xl float">🔋</div><div><b>Expérience :</b> Poudre de zinc → <b>flamme bleu-vert</b> 💙💚 + fumée blanche.<br><b>Produit :</b> poudre blanche (jaune à chaud, blanche à froid) = <b>Oxyde de zinc ZnO</b>.</div></div>
+<div class="bg-black/50 rounded-xl p-3 text-center"><div class="font-black text-sky-300 text-lg">2 Zn + O₂ → 2 ZnO</div><div class="text-xs">Couche protectrice ✅ • Utilisé pour galvaniser le fer !</div></div>
+<button onclick="goLab('Zn')" class="bg-sky-600 px-3 py-1 rounded-full font-bold text-xs btn-pop">🔥 Tester au Labo</button> <button onclick="markLesson(this)" class="bg-emerald-600 px-3 py-1 rounded-full font-bold text-xs btn-pop">✓ +10 XP</button>
+</div></div>
+</div>
+
+<div class="accordion glass rounded-2xl overflow-hidden">
+<button onclick="toggleAcc(this)" class="w-full text-left p-4 font-black flex justify-between items-center bg-amber-700/30">V. Combustion du CUIVRE : Cu (النحاس) <span class="arrow">⬇️</span></button>
+<div class="accordion-body"><div class="p-4 text-sm space-y-2">
+<div class="flex gap-3 items-center"><div class="text-5xl float">🪙</div><div><b>Expérience :</b> Lame de cuivre rouge chauffée → se couvre d'une <b>couche noire</b> ⬛.<br><b>Produit :</b> <b>Oxyde de cuivre CuO</b> noir. À froid humide : vert-de-gris.</div></div>
+<div class="bg-black/50 rounded-xl p-3 text-center"><div class="font-black text-orange-400 text-lg">2 Cu + O₂ → 2 CuO</div><div class="text-xs">Rouge brillant → Noir • Couche non totalement protectrice</div></div>
+<button onclick="goLab('Cu')" class="bg-orange-700 px-3 py-1 rounded-full font-bold text-xs btn-pop">🔥 Tester au Labo</button> <button onclick="markLesson(this)" class="bg-emerald-600 px-3 py-1 rounded-full font-bold text-xs btn-pop">✓ +10 XP</button>
+</div></div>
+</div>
+
+<div class="accordion glass rounded-2xl overflow-hidden">
+<button onclick="toggleAcc(this)" class="w-full text-left p-4 font-black flex justify-between items-center bg-emerald-500/20">VI. Tableau Récap + Protection 🛡️ <span class="arrow">⬇️</span></button>
+<div class="accordion-body"><div class="p-4 text-sm">
+<div class="overflow-x-auto"><table class="w-full text-xs sm:text-sm text-center border border-white/20 rounded-xl overflow-hidden">
+<tr class="bg-white/10 font-black"><td class="p-2">Métal</td><td class="p-2">Observation</td><td class="p-2">Oxyde</td><td class="p-2">Équation</td><td class="p-2">Protège ?</td></tr>
+<tr class="border-t border-white/10"><td>Fe ⚙️</td><td>Étincelles, boule noire magnétique</td><td class="text-orange-300 font-bold">Fe₃O₄</td><td>3Fe+2O₂→Fe₃O₄</td><td>❌ rouille</td></tr>
+<tr class="border-t border-white/10 bg-white/5"><td>Al 🥫</td><td>Éclair blanc aveuglant</td><td class="font-bold">Al₂O₃</td><td>4Al+3O₂→2Al₂O₃</td><td>✅ oui</td></tr>
+<tr class="border-t border-white/10"><td>Zn 🔋</td><td>Flamme bleu-vert</td><td class="text-sky-300 font-bold">ZnO</td><td>2Zn+O₂→2ZnO</td><td>✅ oui</td></tr>
+<tr class="border-t border-white/10 bg-white/5"><td>Cu 🪙</td><td>Couche noire</td><td class="text-orange-400 font-bold">CuO</td><td>2Cu+O₂→2CuO</td><td>⚠️ partiel</td></tr>
+</table></div>
+<p class="mt-2">🦀 <b>Corrosion humide (à froid) :</b> Fe + O₂ + H₂O → <b>Rouille</b> Fe₂O₃·xH₂O (brune, poreuse, friable). Nécessite <b>eau + air</b> en même temps !</p>
+<p>🛡️ <b>Protections :</b> peinture 🎨, graisse/huile, vernis, recouvrement par Zn (galvanisation), étamage, alliage inox (Fe+Cr+Ni), stockage au sec.</p>
+<button onclick="markLesson(this)" class="mt-2 bg-emerald-600 px-3 py-1 rounded-full font-bold text-xs btn-pop">✓ +10 XP</button>
+</div></div>
+</div>
+
+</div>
+</div>
+</section>
+
+<!-- LABO -->
+<section id="screen-labo" class="tab-screen hidden">
+<div class="glass rounded-3xl p-4 sm:p-6 text-center">
+<h2 class="text-xl sm:text-2xl font-black">🔥 Labo Virtuel : Brûle les Métaux !</h2>
+<p class="text-xs text-sky-300">1. Choisis un métal • 2. Appuie sur BRÛLER • 3. Observe et gagne de l'XP</p>
+<div class="flex justify-center gap-2 mt-3 flex-wrap">
+<button onclick="selectLabMetal('Fe')" id="lab-Fe" class="labBtn px-4 py-2 rounded-full font-black bg-gray-500 ring-4 ring-amber-400 btn-pop">⚙️ Fer</button>
+<button onclick="selectLabMetal('Al')" id="lab-Al" class="labBtn px-4 py-2 rounded-full font-black bg-slate-400 btn-pop">🥫 Alu</button>
+<button onclick="selectLabMetal('Zn')" id="lab-Zn" class="labBtn px-4 py-2 rounded-full font-black bg-sky-500 btn-pop">🔋 Zinc</button>
+<button onclick="selectLabMetal('Cu')" id="lab-Cu" class="labBtn px-4 py-2 rounded-full font-black bg-orange-600 btn-pop">🪙 Cuivre</button>
+</div>
+<div class="mt-4 grid sm:grid-cols-2 gap-3">
+<div class="bg-black/60 rounded-3xl p-4 relative overflow-hidden min-h-[280px] flex flex-col justify-end items-center" id="flaskZone">
+<div class="text-xs text-sky-300 absolute top-2">💨 O₂ pur • Bec Bunsen • <span id="labMetalName">Fer (Fe)</span></div>
+<div id="metalWire" class="text-6xl mb-1">⚙️</div>
+<div id="flameDiv" class="hidden flame"></div>
+<div class="w-40 h-6 bg-gradient-to-t from-blue-900 to-blue-600 rounded-b-full border-2 border-blue-300/50"></div>
+<div class="text-[11px] text-slate-400">Flacon d'O₂</div>
+<div id="labResult" class="mt-2 text-sm font-bold min-h-[50px]"></div>
+</div>
+<div class="text-left bg-white/5 rounded-3xl p-4 text-sm space-y-2">
+<div><b>🔬 Protocole :</b> <span id="labProto">Chauffer la laine de fer au bec Bunsen jusqu'à incandescence, puis introduire dans le flacon d'O₂.</span></div>
+<div class="bg-black/40 rounded-xl p-2"><b>👁️ Observation :</b><br><span id="labObs" class="text-amber-200">En attente de combustion...</span></div>
+<div class="bg-black/40 rounded-xl p-2"><b>⚗️ Équation bilan :</b><br><span id="labEq" class="text-lg font-black text-emerald-300">—</span><br><span id="labProd" class="text-xs text-slate-300"></span></div>
+<button onclick="burnMetal()" id="burnBtn" class="w-full py-3 rounded-2xl font-black text-lg bg-gradient-to-r from-orange-500 to-red-600 btn-pop shadow-lg">🔥 BRÛLER !</button>
+</div>
+</div>
+</div>
+</section>
+
+<!-- JEUX -->
+<section id="screen-jeux" class="tab-screen hidden">
+<div class="text-center"><h2 class="text-xl sm:text-2xl font-black">🎮 4 Jeux Corrigés</h2><p class="text-xs text-sky-300">Joue, apprends, la correction s'affiche à chaque fois !</p></div>
+
+<!-- JEU 1 OXYCATCH -->
+<div class="glass rounded-3xl p-4 mt-3">
+<div class="flex flex-wrap items-center justify-between gap-2">
+<h3 class="font-black">🚀 Jeu 1 : OxyCatch — Attrape l'Oxygène ! (Arcade)</h3>
+<span class="badge bg-sky-600">Score <span id="oxyScore">0</span> • ❤️ <span id="oxyLives">3</span> • ⏱️ <span id="oxyTime">60</span>s</span>
+</div>
+<p class="text-xs text-slate-300 mt-1">Déplace le creuset <span id="oxyMetalLabel">⚙️ Fe</span> avec souris / doigt / ← →. Attrape uniquement <b class="text-sky-300">O₂</b> pour former l'oxyde ! Évite 💧 eau (rouille) et 💨 CO₂. 5 O₂ = 1 oxyde = +50 bonus !</p>
+<div class="relative mt-2">
+<canvas id="oxyCanvas" width="800" height="420"></canvas>
+<div id="oxyOverlay" class="absolute inset-0 flex flex-col items-center justify-center bg-black/70 rounded-2xl">
+<div class="text-4xl">🚀</div><div class="font-black text-lg" id="oxyOverlayTitle">Prêt à capturer l'O₂ ?</div>
+<div class="text-xs text-slate-300 mb-2" id="oxyOverlaySub">Attrape l'oxygène, forme Fe₃O₄, Al₂O₃, ZnO, CuO !</div>
+<button onclick="startOxy()" class="px-6 py-2 rounded-full bg-gradient-to-r from-emerald-500 to-sky-600 font-black btn-pop">▶️ START</button>
+</div>
+</div>
+<div class="flex gap-2 mt-2 justify-center">
+<button onclick="setOxyMetal('Fe')" class="px-3 py-1 rounded-full bg-gray-500 font-bold text-xs btn-pop">⚙️ Fe</button>
+<button onclick="setOxyMetal('Al')" class="px-3 py-1 rounded-full bg-slate-400 font-bold text-xs btn-pop">🥫 Al</button>
+<button onclick="setOxyMetal('Zn')" class="px-3 py-1 rounded-full bg-sky-500 font-bold text-xs btn-pop">🔋 Zn</button>
+<button onclick="setOxyMetal('Cu')" class="px-3 py-1 rounded-full bg-orange-600 font-bold text-xs btn-pop">🪙 Cu</button>
+<button onclick="startOxy()" class="px-4 py-1 rounded-full bg-red-600 font-bold text-xs btn-pop">🔄 Rejouer</button>
+</div>
+<div id="oxyCorrection" class="hidden mt-2 text-xs bg-black/40 rounded-xl p-2 text-left"></div>
+</div>
+
+<!-- JEU 2 MEMORY -->
+<div class="glass rounded-3xl p-4 mt-3">
+<div class="flex justify-between items-center flex-wrap gap-2"><h3 class="font-black">🧠 Jeu 2 : Memory des Oxydes</h3><span class="badge bg-purple-600">Paires <span id="memPairs">0</span>/8 • Coups <span id="memMoves">0</span></span></div>
+<p class="text-xs text-slate-300">Associe chaque métal à son oxyde / chaque formule à son nom. Correction affichée en cas d'erreur !</p>
+<div id="memBoard" class="grid grid-cols-4 gap-2 mt-2"></div>
+<div id="memMsg" class="text-center text-sm font-bold mt-2 min-h-[24px]"></div>
+<button onclick="initMemory()" class="mt-1 px-4 py-1 rounded-full bg-purple-600 font-bold text-sm btn-pop">🔄 Mélanger</button>
+</div>
+
+<!-- JEU 3 EQUILIBREUR -->
+<div class="glass rounded-3xl p-4 mt-3">
+<h3 class="font-black">⚖️ Jeu 3 : L'Équilibreur d'Équations <span class="badge bg-amber-600 ml-1">Score <span id="balScore">0</span>/4</span></h3>
+<p class="text-xs text-slate-300">Ajuste les coefficients avec + / − puis Vérifie. La correction détaillée apparaît ! (Loi de Lavoisier)</p>
+<div id="balList" class="grid sm:grid-cols-2 gap-2 mt-2"></div>
+</div>
+
+<!-- JEU 4 VRAI FAUX -->
+<div class="glass rounded-3xl p-4 mt-3 text-center">
+<div class="flex justify-between items-center"><h3 class="font-black">⚡ Jeu 4 : Vrai / Faux Rapide (60s)</h3><span class="badge bg-red-600">⏱️ <span id="vfTime">60</span> • ✅ <span id="vfScore">0</span> • 🔥 <span id="vfStreak">0</span></span></div>
+<div id="vfZone" class="bg-black/40 rounded-2xl p-4 mt-2 min-h-[120px] flex flex-col justify-center">
+<div id="vfQ" class="font-bold">Appuie sur START !</div>
+<div id="vfFeedback" class="text-xs mt-1 min-h-[20px]"></div>
+</div>
+<div class="flex gap-2 justify-center mt-2">
+<button onclick="startVF()" class="px-5 py-2 rounded-full bg-emerald-600 font-black btn-pop">▶️ START</button>
+<button onclick="answerVF(true)" class="px-6 py-2 rounded-full bg-sky-600 font-black text-lg btn-pop">✔️ VRAI</button>
+<button onclick="answerVF(false)" class="px-6 py-2 rounded-full bg-red-600 font-black text-lg btn-pop">❌ FAUX</button>
+</div>
+</div>
+</section>
+
+<!-- QUIZ -->
+<section id="screen-quiz" class="tab-screen hidden">
+<div class="glass rounded-3xl p-4 sm:p-6">
+<div class="flex justify-between items-center flex-wrap gap-2">
+<h2 class="text-xl font-black">📝 Quiz Type Examen Régional /20</h2>
+<span class="badge bg-emerald-600">Q <span id="qNum">0</span>/15 • ⏱️ <span id="qTimer">20</span>s</span>
+</div>
+<div class="h-2 bg-black/40 rounded-full mt-2 overflow-hidden"><div id="qProgress" class="h-full bg-gradient-to-r from-emerald-400 to-sky-500 progress-anim" style="width:0%"></div></div>
+<div id="quizStart" class="text-center py-6">
+<div class="text-5xl">🎓</div>
+<p class="text-sm mt-2">15 QCM + calcul + équilibrage • 20s par question • Correction détaillée après chaque réponse.<br>Bonne chance, futur scientifique !</p>
+<button onclick="startQuiz()" class="mt-3 px-8 py-3 rounded-full bg-gradient-to-r from-emerald-500 to-teal-600 font-black text-lg btn-pop shadow-lg">🚀 COMMENCER L'EXAMEN</button>
+</div>
+<div id="quizPlay" class="hidden">
+<div id="qCat" class="text-[11px] font-black text-amber-300"></div>
+<div id="qText" class="font-black text-base sm:text-lg mt-1"></div>
+<div id="qOpts" class="grid gap-2 mt-3"></div>
+<div id="qExplain" class="hidden mt-3 bg-black/50 rounded-xl p-3 text-sm border-l-4 border-emerald-400"></div>
+<button id="qNextBtn" onclick="nextQuestion()" class="hidden mt-3 w-full py-2 rounded-full bg-sky-600 font-black btn-pop">Question suivante ➡️</button>
+</div>
+<div id="quizEnd" class="hidden text-center py-4">
+<div class="text-6xl" id="quizEmoji">🏆</div>
+<div class="text-2xl font-black" id="quizNote">12/20</div>
+<div id="quizMsg" class="text-sm"></div>
+<div id="quizReview" class="text-left mt-3 space-y-2 text-xs max-h-64 overflow-y-auto"></div>
+<button onclick="startQuiz()" class="mt-3 px-6 py-2 rounded-full bg-emerald-600 font-black btn-pop">🔄 Recommencer</button>
+</div>
+</div>
+</section>
+
+<!-- EXOS -->
+<section id="screen-exos" class="tab-screen hidden">
+<div class="glass rounded-3xl p-4 sm:p-6">
+<h2 class="text-xl font-black text-center">✅ 3 Exercices Corrigés (Modèle Examen Régional)</h2>
+
+<div class="mt-3 bg-white/5 rounded-2xl p-4 text-sm">
+<div class="font-black text-amber-300">📄 Exercice 1 : Combustion du fer + Conservation de masse (8 pts)</div>
+<p class="mt-1">On brûle <b>11,2 g</b> de fer dans le dioxygène. Il se forme de l'oxyde magnétique Fe₃O₄.<br>1) Écrire et équilibrer l'équation. 2) Calculer la quantité de matière de Fe (M(Fe)=56 g/mol). 3) Déduire la masse d'O₂ nécessaire (M(O)=16). 4) Calculer la masse d'oxyde formée. Vérifier Lavoisier.<br><span class="text-xs text-slate-400">💡 Aide : n=m/M • Tableau d'avancement.</span></p>
+<button onclick="toggleCorr(1)" class="mt-2 px-4 py-1 rounded-full bg-emerald-600 font-bold text-xs btn-pop">👁️ Voir / Cacher la correction</button>
+<div id="corr1" class="hidden mt-2 bg-black/50 rounded-xl p-3 space-y-1 border-l-4 border-emerald-400">
+<p>✅ <b>1) Équation :</b> 3Fe + 2O₂ → Fe₃O₄. (3 atomes Fe et 4 atomes O de chaque côté ✔️)</p>
+<p>✅ <b>2) n(Fe)= m/M = 11,2/56 = 0,20 mol.</b></p>
+<p>✅ <b>3) D'après l'équation :</b> 3 mol Fe ↔ 2 mol O₂ donc n(O₂)=0,20×2/3=0,133 mol. m(O₂)=n×M=0,133×32=<b>4,27 g</b>.</p>
+<p>✅ <b>4) Conservation masse :</b> m(Fe₃O₄)=m(Fe)+m(O₂)=11,2+4,27=<b>15,47 g</b>. Vérifié : M(Fe₃O₄)=232 g/mol, n=0,0667 mol → m=15,47 g ✔️ Lavoisier respecté !</p>
+<p class="text-amber-300">🎯 Piège examen : ne pas oublier que M(O₂)=32 et pas 16 ! +15 XP si tu as compris.</p>
+<button onclick="addXP(15)" class="px-3 py-1 rounded-full bg-amber-500 font-bold text-xs btn-pop">+15 XP compris !</button>
+</div>
+</div>
+
+<div class="mt-3 bg-white/5 rounded-2xl p-4 text-sm">
+<div class="font-black text-sky-300">📄 Exercice 2 : Identifier les 4 oxydes (6 pts)</div>
+<p class="mt-1">Quatre lames/poudres A, B, C, D chauffées donnent : A→poudre blanche éblouissante, B→boule noire magnétique, C→couche noire, D→flamme bleu-vert.<br>1) Identifier chaque métal et son oxyde + formule. 2) Donner les 4 équations équilibrées. 3) Lesquels sont protégés par leur oxyde ?</p>
+<button onclick="toggleCorr(2)" class="mt-2 px-4 py-1 rounded-full bg-sky-600 font-bold text-xs btn-pop">👁️ Voir / Cacher la correction</button>
+<div id="corr2" class="hidden mt-2 bg-black/50 rounded-xl p-3 space-y-1 border-l-4 border-sky-400">
+<p>✅ A = <b>Aluminium → Alumine Al₂O₃</b> (lumière blanche) : 4Al+3O₂→2Al₂O₃</p>
+<p>✅ B = <b>Fer → Fe₃O₄</b> (noir magnétique) : 3Fe+2O₂→Fe₃O₄</p>
+<p>✅ C = <b>Cuivre → CuO noir</b> (couche noire) : 2Cu+O₂→2CuO</p>
+<p>✅ D = <b>Zinc → ZnO</b> (bleu-vert) : 2Zn+O₂→2ZnO</p>
+<p>✅ <b>3) Protégés :</b> Al et Zn (couche compacte imperméable). Fer : rouille poreuse ❌.</p>
+<button onclick="addXP(15)" class="px-3 py-1 rounded-full bg-amber-500 font-bold text-xs btn-pop">+15 XP compris !</button>
+</div>
+</div>
+
+<div class="mt-3 bg-white/5 rounded-2xl p-4 text-sm">
+<div class="font-black text-fuchsia-300">📄 Exercice 3 : Rouille & Protection (6 pts)</div>
+<p class="mt-1">Un clou en fer laissé à l'air humide rouille, un portail en fer peint ne rouille pas.<br>1) Qu'est-ce que la rouille ? Conditions de formation ? 2) Pourquoi la peinture protège ? Citer 3 autres moyens. 3) Pourquoi l'aluminium des fenêtres ne rouille pas même sans peinture ?</p>
+<button onclick="toggleCorr(3)" class="mt-2 px-4 py-1 rounded-full bg-fuchsia-600 font-bold text-xs btn-pop">👁️ Voir / Cacher la correction</button>
+<div id="corr3" class="hidden mt-2 bg-black/50 rounded-xl p-3 space-y-1 border-l-4 border-fuchsia-400">
+<p>✅ <b>1) Rouille = oxyde de fer hydraté Fe₂O₃·xH₂O</b>, brune poreuse. Conditions : <b>Fe + O₂ + H₂O</b> en même temps. Preuve : fer dans air sec → rien, dans eau bouillie sans air → rien.</p>
+<p>✅ <b>2) Peinture = barrière</b> qui isole le fer de O₂ et H₂O. Autres : graisse/huile, vernis, galvanisation (couche Zn), alliage inox, chromage.</p>
+<p>✅ <b>3) Alu protégé par Al₂O₃</b> naturelle, compacte, adhérente, invisible qui empêche O₂ d'atteindre le métal. Le fer forme une couche poreuse qui s'écaille.</p>
+<button onclick="addXP(15)" class="px-3 py-1 rounded-full bg-amber-500 font-bold text-xs btn-pop">+15 XP compris !</button>
+</div>
+</div>
+
+</div>
+</section>
+
+<div class="text-center text-[11px] text-slate-400 mt-4">🇲🇦 Conforme au programme marocain Physique-Chimie 3AC • Réalisé pour réviser en s'amusant • 🔊 Son Web Audio • 📱 Mobile + 💻 PC</div>
+</main>
+
+<script>
+// ===== AUDIO =====
+let audioCtx=null, soundOn=true;
+function ensureAudio(){ try{ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state==='suspended') audioCtx.resume(); }catch(e){} }
+function tone(f,d=0.15,type='sine',v=0.25,delay=0){ if(!soundOn) return; ensureAudio(); if(!audioCtx) return; const t=audioCtx.currentTime+delay; const o=audioCtx.createOscillator(), g=audioCtx.createGain(); o.type=type; o.frequency.value=f; g.gain.setValueAtTime(v,t); g.gain.exponentialRampToValueAtTime(0.001,t+d); o.connect(g); g.connect(audioCtx.destination); o.start(t); o.stop(t+d+0.05); }
+function playClick(){ tone(600,0.08,'square',0.12); }
+function playGood(){ tone(523,0.12,'sine',0.25); tone(659,0.12,'sine',0.25,0.1); tone(784,0.2,'sine',0.25,0.2); }
+function playBad(){ tone(200,0.25,'sawtooth',0.25); tone(150,0.3,'sawtooth',0.2,0.1); }
+function playFlip(){ tone(400,0.07,'triangle',0.2); }
+function playBurn(){ tone(150,0.4,'sawtooth',0.2); tone(300,0.3,'square',0.15,0.1); tone(800,0.5,'sawtooth',0.12,0.2); }
+function playWin(){ [523,659,784,1046,1318].forEach((f,i)=>tone(f,0.2,'sine',0.25,i*0.12)); }
+function toggleSound(){ soundOn=!soundOn; document.getElementById('soundBtn').textContent=soundOn?'🔊':'🔇'; if(soundOn) playClick(); }
+
+// ===== XP / HUD =====
+let XP=parseInt(localStorage.getItem('oxylab_xp')||'0');
+function addXP(n){ XP+=n; localStorage.setItem('oxylab_xp',XP); updateHUD(); }
+function updateHUD(){ document.getElementById('xpVal').textContent=XP; const lvl=Math.floor(XP/100)+1; document.getElementById('lvlVal').textContent=lvl; document.getElementById('xpBar').style.width=((XP%100))+'%'; }
+function confetti(n=40){ const colors=['#f59e0b','#ef4444','#22c55e','#3b82f6','#eab308','#a855f7']; for(let i=0;i<n;i++){ const d=document.createElement('div'); d.className='confetti'; d.style.left=Math.random()*100+'vw'; d.style.background=colors[Math.floor(Math.random()*colors.length)]; d.style.animationDuration=(1.5+Math.random()*2)+'s'; document.body.appendChild(d); setTimeout(()=>d.remove(),3500); } }
+
+// ===== NAV =====
+function showTab(id){ playClick(); document.querySelectorAll('.tab-screen').forEach(s=>s.classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===id)); window.scrollTo({top:0,behavior:'smooth'}); }
+function toggleAcc(btn){ const acc=btn.parentElement; const was=acc.classList.contains('open'); document.querySelectorAll('.accordion').forEach(a=>a.classList.remove('open')); if(!was) acc.classList.add('open'); playClick(); }
+function markLesson(btn){ btn.textContent='✅ Compris ! +10 XP'; btn.disabled=true; addXP(10); playGood(); confetti(15); }
+function toggleCorr(n){ playClick(); document.getElementById('corr'+n).classList.toggle('hidden'); }
+
+// ===== AVATAR =====
+let playerMetal='Fe';
+const AVNAMES={Fe:'Fer (الحديد)',Al:'Aluminium (الألومنيوم)',Zn:'Zinc (الزنك)',Cu:'Cuivre (النحاس)'};
+function chooseAvatar(m,e){ playerMetal=m; playClick(); document.querySelectorAll('.avBtn').forEach(b=>b.classList.remove('ring-4','ring-amber-400')); document.querySelector(`[data-av="${m}"]`).classList.add('ring-4','ring-amber-400'); document.getElementById('avName').textContent=AVNAMES[m]; setOxyMetal(m,true); }
+
+// ===== LABO =====
+const METALS={
+ Fe:{icon:'⚙️',name:'Fer (Fe)',proto:"Chauffer la laine de fer au bec Bunsen jusqu'à incandescence, puis introduire dans le flacon d'O₂.",obs:"✨ Étincelles vives ! Boule incandescente qui fond. Produit noir, gris, attiré par l'aimant 🧲.",eq:"3 Fe + 2 O₂ → Fe₃O₄",prod:"Produit : Oxyde magnétique (Fe₃O₄) — noir magnétique."},
+ Al:{icon:'🥫',name:'Aluminium (Al)',proto:"Chauffer la poudre d'aluminium sur une coupelle, approcher la flamme (lunettes !).",obs:"⚡ Lumière blanche ÉBLOUISSANTE ! Poudre blanche qui reste.",eq:"4 Al + 3 O₂ → 2 Al₂O₃",prod:"Produit : Alumine (Al₂O₃) — poudre blanche, couche protectrice ✅."},
+ Zn:{icon:'🔋',name:'Zinc (Zn)',proto:"Chauffer la poudre de zinc : flamme caractéristique.",obs:"💙💚 Flamme bleu-vert + fumée blanche ! Poudre jaune à chaud, blanche à froid.",eq:"2 Zn + O₂ → 2 ZnO",prod:"Produit : Oxyde de zinc (ZnO) — protecteur ✅."},
+ Cu:{icon:'🪙',name:'Cuivre (Cu)',proto:"Chauffer fortement la lame de cuivre rouge dans la flamme.",obs:"⬛ La lame rouge se couvre d'une couche NOIRE.",eq:"2 Cu + O₂ → 2 CuO",prod:"Produit : Oxyde de cuivre (CuO) — noir."}
+};
+let labMetal='Fe';
+function selectLabMetal(m){ labMetal=m; playClick(); ['Fe','Al','Zn','Cu'].forEach(k=>document.getElementById('lab-'+k).classList.remove('ring-4','ring-amber-400')); document.getElementById('lab-'+m).classList.add('ring-4','ring-amber-400'); const M=METALS[m]; document.getElementById('labMetalName').textContent=M.name; document.getElementById('metalWire').textContent=M.icon; document.getElementById('labProto').textContent=M.proto; document.getElementById('labObs').textContent='En attente de combustion...'; document.getElementById('labEq').textContent='—'; document.getElementById('labProd').textContent=''; document.getElementById('labResult').textContent=''; }
+function goLab(m){ showTab('screen-labo'); selectLabMetal(m); }
+function burnMetal(){ playBurn(); const M=METALS[labMetal]; const flame=document.getElementById('flameDiv'); const zone=document.getElementById('flaskZone'); flame.classList.remove('hidden'); document.getElementById('burnBtn').disabled=true; document.getElementById('labResult').innerHTML='🔥 Combustion en cours...'; document.getElementById('labObs').textContent='...'; // sparks
+ for(let i=0;i<25;i++){ const s=document.createElement('div'); s.className='spark'; s.style.left=(30+Math.random()*40)+'%'; s.style.bottom='80px'; s.style.background=['#fde047','#fb923c','#ef4444','#fff'][Math.floor(Math.random()*4)]; s.style.setProperty('--dx',(Math.random()*200-100)+'px'); s.style.setProperty('--dy',(-50-Math.random()*150)+'px'); zone.appendChild(s); setTimeout(()=>s.remove(),1100); }
+ setTimeout(()=>{ flame.classList.add('hidden'); document.getElementById('burnBtn').disabled=false; document.getElementById('labObs').textContent=M.obs; document.getElementById('labEq').textContent=M.eq; document.getElementById('labProd').textContent=M.prod; document.getElementById('labResult').innerHTML='✅ Oxyde formé ! +10 XP'; document.getElementById('labResult').classList.add('pop'); setTimeout(()=>document.getElementById('labResult').classList.remove('pop'),500); addXP(10); playGood(); },1400);
+}
+
+// ===== MEMORY =====
+const MEMDATA=[['⚙️ Fe','Fer'],['Fe₃O₄','Oxyde magnétique'],['🥫 Al','Aluminium'],['Al₂O₃','Alumine'],['🔋 Zn','Zinc'],['ZnO','Oxyde de zinc'],['🪙 Cu','Cuivre'],['CuO','Oxyde de cuivre']];
+let memFirst=null, memLock=false, memPairs=0, memMoves=0, memStartT=0;
+function initMemory(){ const board=document.getElementById('memBoard'); board.innerHTML=''; memFirst=null; memLock=false; memPairs=0; memMoves=0; memStartT=Date.now(); document.getElementById('memPairs').textContent='0'; document.getElementById('memMoves').textContent='0'; document.getElementById('memMsg').textContent=''; let cards=[]; MEMDATA.forEach((p,i)=>{ cards.push({t:p[0],pair:i}); cards.push({t:p[1],pair:i}); }); cards.sort(()=>Math.random()-0.5); cards.forEach(c=>{ const d=document.createElement('div'); d.className='mem-card'; d.dataset.pair=c.pair; d.innerHTML=`<div class="mem-inner"><div class="mem-face mem-front">❓</div><div class="mem-face mem-back">${c.t}</div></div>`; d.onclick=()=>flipMem(d); board.appendChild(d); }); }
+function flipMem(el){ if(memLock||el.classList.contains('flipped')||el.classList.contains('matched')) return; playFlip(); el.classList.add('flipped'); if(!memFirst){ memFirst=el; return; } memMoves++; document.getElementById('memMoves').textContent=memMoves; if(memFirst.dataset.pair===el.dataset.pair){ memFirst.classList.add('matched'); el.classList.add('matched'); document.getElementById('memMsg').innerHTML='✅ Bonne paire ! '+explainPair(el.dataset.pair); memPairs++; document.getElementById('memPairs').textContent=memPairs; playGood(); addXP(5); memFirst=null; if(memPairs===8){ const secs=Math.round((Date.now()-memStartT)/1000); document.getElementById('memMsg').innerHTML=`🏆 BRAVO ! 8/8 en ${memMoves} coups et ${secs}s ! +30 XP`; playWin(); confetti(60); addXP(30); localStorage.setItem('bestMem',memMoves+' coups'); document.getElementById('bestMem').textContent=memMoves+' coups'; } } else { memLock=true; const a=memFirst,b=el; document.getElementById('memMsg').innerHTML='❌ Raté ! Correction : '+explainPair(a.dataset.pair)+' ≠ '+explainPair(b.dataset.pair); playBad(); b.classList.add('shake'); setTimeout(()=>{ a.classList.remove('flipped'); b.classList.remove('flipped','shake'); memFirst=null; memLock=false; },900); } }
+function explainPair(i){ i=parseInt(i); const map=['Fe ↔ Fe₃O₄ (Fer → Oxyde magnétique)','Fe ↔ Fe₃O₄','Al ↔ Al₂O₃ (Aluminium → Alumine)','Al ↔ Al₂O₃','Zn ↔ ZnO (Zinc → Oxyde de zinc)','Zn ↔ ZnO','Cu ↔ CuO (Cuivre → Oxyde de cuivre)','Cu ↔ CuO']; return map[i]||''; }
+
+// ===== EQUILIBREUR =====
+const BAL=[
+ {name:'Fer', eq:['Fe','O₂','Fe₃O₄'], ans:[3,2,1], user:[1,1,1], corr:"3 Fe + 2 O₂ → Fe₃O₄ : 3 Fe et 4 O de chaque côté."},
+ {name:'Aluminium', eq:['Al','O₂','Al₂O₃'], ans:[4,3,2], user:[1,1,1], corr:"4 Al + 3 O₂ → 2 Al₂O₃ : 4 Al et 6 O équilibrés."},
+ {name:'Zinc', eq:['Zn','O₂','ZnO'], ans:[2,1,2], user:[1,1,1], corr:"2 Zn + O₂ → 2 ZnO : 2 Zn et 2 O partout."},
+ {name:'Cuivre', eq:['Cu','O₂','CuO'], ans:[2,1,2], user:[1,1,1], corr:"2 Cu + O₂ → 2 CuO : 2 Cu et 2 O partout."}
+];
+function renderBal(){ const L=document.getElementById('balList'); L.innerHTML=''; BAL.forEach((b,i)=>{ const d=document.createElement('div'); d.className='bg-black/40 rounded-2xl p-3 text-center'; d.id='bal'+i; d.innerHTML=`<div class="font-black text-sm">${b.name}</div><div class="flex items-center justify-center gap-1 mt-2 text-sm font-black flex-wrap">
+ <span class="flex items-center gap-1 bg-white/10 rounded-lg px-1"><button onclick="balChange(${i},0,-1)" class="px-2 py-1 bg-red-600 rounded">−</button><span id="bal-${i}-0" class="w-6 text-amber-300">${b.user[0]}</span><button onclick="balChange(${i},0,1)" class="px-2 py-1 bg-green-600 rounded">+</button> ${b.eq[0]}</span> <span>+</span>
+ <span class="flex items-center gap-1 bg-white/10 rounded-lg px-1"><button onclick="balChange(${i},0,-1)" style="display:none"></button><button onclick="balChange(${i},1,-1)" class="px-2 py-1 bg-red-600 rounded">−</button><span id="bal-${i}-1" class="w-6 text-amber-300">${b.user[1]}</span><button onclick="balChange(${i},1,1)" class="px-2 py-1 bg-green-600 rounded">+</button> ${b.eq[1]}</span> <span>→</span>
+ <span class="flex items-center gap-1 bg-white/10 rounded-lg px-1"><button onclick="balChange(${i},2,-1)" class="px-2 py-1 bg-red-600 rounded">−</button><span id="bal-${i}-2" class="w-6 text-amber-300">${b.user[2]}</span><button onclick="balChange(${i},2,1)" class="px-2 py-1 bg-green-600 rounded">+</button> ${b.eq[2]}</span></div>
+ <button onclick="checkBal(${i})" class="mt-2 px-4 py-1 rounded-full bg-amber-500 font-bold text-xs btn-pop">✔️ Vérifier</button><div id="balMsg${i}" class="text-xs mt-1 min-h-[20px]"></div>`; L.appendChild(d); }); }
+function balChange(i,j,d){ playClick(); BAL[i].user[j]=Math.min(6,Math.max(1,BAL[i].user[j]+d)); document.getElementById(`bal-${i}-${j}`).textContent=BAL[i].user[j]; }
+function checkBal(i){ const b=BAL[i]; const ok=b.user.every((v,k)=>v===b.ans[k]); const msg=document.getElementById('balMsg'+i); if(ok){ msg.innerHTML='✅ Correct ! '+b.corr; document.getElementById('bal'+i).style.border='2px solid #22c55e'; playGood(); addXP(10); } else { msg.innerHTML='❌ Faux. Correction : <b>'+b.corr+'</b>'; document.getElementById('bal'+i).style.border='2px solid #ef4444'; document.getElementById('bal'+i).classList.add('shake'); setTimeout(()=>document.getElementById('bal'+i).classList.remove('shake'),500); playBad(); } updateBalScore(); }
+function updateBalScore(){ let s=0; BAL.forEach(b=>{ if(b.user.every((v,k)=>v===b.ans[k])) s++; }); document.getElementById('balScore').textContent=s; if(s===4){ playWin(); confetti(30); } }
+
+// ===== OXYCATCH (ARCADE CANVAS) =====
+const cv=document.getElementById('oxyCanvas'), ctx=cv.getContext('2d');
+let oxyRunning=false, oxyScore=0, oxyLives=3, oxyTime=60, oxyItems=[], oxyPX=400, oxyO2caught=0, oxyLoop=null, oxySpawnT=null, oxyTimerT=null, oxyMetal='Fe';
+const OXYMETA={Fe:{icon:'⚙️',oxide:'Fe₃O₄',need:5},Al:{icon:'🥫',oxide:'Al₂O₃',need:5},Zn:{icon:'🔋',oxide:'ZnO',need:5},Cu:{icon:'🪙',oxide:'CuO',need:5}};
+function setOxyMetal(m,silent){ oxyMetal=m; playerMetal=m; document.getElementById('oxyMetalLabel').textContent=OXYMETA[m].icon+' '+m; document.getElementById('labMetalName') && null; if(!silent) playClick(); const sub={Fe:'Attrape l’oxygène, forme Fe₃O₄ !',Al:'Attrape l’oxygène, forme Al₂O₃ !',Zn:'Attrape l’oxygène, forme ZnO !',Cu:'Attrape l’oxygène, forme CuO !'}; const el=document.getElementById('oxyOverlaySub'); if(el && !oxyRunning) el.textContent=sub[m]; }
+function resizeCanvas(){ const r=cv.getBoundingClientRect(); cv.width=r.width; cv.height=420; }
+window.addEventListener('resize',()=>{ resizeCanvas(); });
+function startOxy(){ ensureAudio(); playClick(); resizeCanvas(); oxyRunning=true; oxyScore=0; oxyLives=3; oxyTime=60; oxyItems=[]; oxyO2caught=0; oxyPX=cv.width/2; document.getElementById('oxyScore').textContent='0'; document.getElementById('oxyLives').textContent='3'; document.getElementById('oxyTime').textContent='60'; document.getElementById('oxyOverlay').style.display='none'; document.getElementById('oxyCorrection').classList.add('hidden'); clearInterval(oxySpawnT); clearInterval(oxyTimerT); cancelAnimationFrame(oxyLoop); oxySpawnT=setInterval(spawnOxy,700); oxyTimerT=setInterval(()=>{ oxyTime--; document.getElementById('oxyTime').textContent=oxyTime; if(oxyTime<=0) endOxy(true); },1000); loopOxy(); }
+function spawnOxy(){ if(!oxyRunning) return; const r=Math.random(); let type='O2'; if(r<0.55) type='O2'; else if(r<0.75) type='H2O'; else if(r<0.9) type='CO2'; else type='N2'; oxyItems.push({x:20+Math.random()*(cv.width-40),y:-20,vy:2+Math.random()*2+ (60-oxyTime)*0.04,type,ph:Math.random()*6}); }
+function loopOxy(){ if(!oxyRunning) return; ctx.clearRect(0,0,cv.width,cv.height); // bg stars
+ ctx.fillStyle='rgba(255,255,255,.3)'; for(let i=0;i<20;i++){ ctx.fillRect((i*97+oxyTime*10)%cv.width,(i*53)%cv.height,2,2); }
+ // player creuset
+ const pw=110, ph=46, py=cv.height-60; oxyPX=Math.max(pw/2,Math.min(cv.width-pw/2,oxyPX));
+ ctx.fillStyle='#f59e0b'; ctx.strokeStyle='#fff'; ctx.lineWidth=2; roundRect(oxyPX-pw/2,py,pw,ph,12); ctx.fill(); ctx.stroke();
+ ctx.font='28px serif'; ctx.textAlign='center'; ctx.fillText(OXYMETA[oxyMetal].icon,oxyPX,py+32);
+ ctx.fillStyle='#fff'; ctx.font='bold 13px sans-serif'; ctx.fillText(oxyMetal+' → '+OXYMETA[oxyMetal].oxide,oxyPX,py-8);
+ // progress to oxide
+ ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillRect(oxyPX-40,py-6,80,6); ctx.fillStyle='#22c55e'; ctx.fillRect(oxyPX-40,py-6,80*(oxyO2caught/5),6);
+ // items
+ for(let i=oxyItems.length-1;i>=0;i--){ const it=oxyItems[i]; it.y+=it.vy; it.ph+=0.05; it.x+=Math.sin(it.ph)*0.6; let emoji='🫧',label='O₂',col='#38bdf8';
+  if(it.type==='O2'){ emoji='🫧'; label='O₂'; col='#38bdf8'; } else if(it.type==='H2O'){ emoji='💧'; label='H₂O'; col='#60a5fa'; } else if(it.type==='CO2'){ emoji='💨'; label='CO₂'; col='#9ca3af'; } else { emoji='🎈'; label='N₂'; col='#c4b5fd'; }
+  ctx.beginPath(); ctx.arc(it.x,it.y,20,0,7); ctx.fillStyle=col+'55'; ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle=col; ctx.stroke();
+  ctx.font='20px serif'; ctx.fillText(emoji,it.x,it.y+7); ctx.fillStyle='#fff'; ctx.font='bold 11px sans-serif'; ctx.fillText(label,it.x,it.y+30);
+  // collision
+  if(it.y>py-10 && it.y<py+ph && Math.abs(it.x-oxyPX)<pw/2+15){ oxyItems.splice(i,1); catchItem(it.type); continue; }
+  if(it.y>cv.height+30){ oxyItems.splice(i,1); if(it.type==='O2'){ oxyO2caught=0; } continue; }
+ }
+ oxyLoop=requestAnimationFrame(loopOxy);
+}
+function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function catchItem(t){ if(t==='O2'){ oxyScore+=10; oxyO2caught++; tone(700+oxyO2caught*80,0.12,'sine',0.25); document.getElementById('oxyScore').textContent=oxyScore; if(oxyO2caught>=5){ oxyScore+=50; oxyO2caught=0; document.getElementById('oxyScore').textContent=oxyScore; tone(1046,0.25,'sine',0.3); showOxyFlash('✅ +50 ! 1 '+OXYMETA[oxyMetal].oxide+' formé !'); addXP(10); } }
+ else if(t==='H2O'){ oxyLives--; document.getElementById('oxyLives').textContent=oxyLives; playBad(); showOxyFlash('💧 EAU ! Rouille ! -1 ❤️ (Fe+O₂+H₂O→rouille)'); if(oxyLives<=0) endOxy(false); }
+ else { oxyScore=Math.max(0,oxyScore-5); document.getElementById('oxyScore').textContent=oxyScore; playBad(); showOxyFlash(t==='CO2'?'💨 CO₂ inutile ! -5':'🎈 N₂ inerte ! -5'); } }
+let flashT=null;
+function showOxyFlash(txt){ let f=document.getElementById('oxyFlash'); if(!f){ f=document.createElement('div'); f.id='oxyFlash'; f.className='absolute top-2 left-1/2 -translate-x-1/2 bg-black/80 px-3 py-1 rounded-full text-xs font-bold'; cv.parentElement.appendChild(f); } f.textContent=txt; f.style.display='block'; clearTimeout(flashT); flashT=setTimeout(()=>f.style.display='none',1200); }
+function endOxy(win){ oxyRunning=false; clearInterval(oxySpawnT); clearInterval(oxyTimerT); cancelAnimationFrame(oxyLoop); const best=parseInt(localStorage.getItem('bestOxy')||'0'); if(oxyScore>best){ localStorage.setItem('bestOxy',oxyScore); document.getElementById('bestOxy').textContent=oxyScore; } playWin(); confetti(50); addXP(Math.floor(oxyScore/10)+5);
+ const ov=document.getElementById('oxyOverlay'); ov.style.display='flex';
+ document.getElementById('oxyOverlayTitle').textContent=win?`⏰ Temps écoulé ! Score ${oxyScore}`:(oxyLives<=0?`💥 Corrodé ! Score ${oxyScore}`:`Score ${oxyScore}`);
+ document.getElementById('oxyOverlaySub').textContent=`Tu as formé l'oxyde ${OXYMETA[oxyMetal].oxide} !`;
+ const c=document.getElementById('oxyCorrection'); c.classList.remove('hidden');
+ c.innerHTML=`📖 <b>Correction Labo :</b> Pour <b>${oxyMetal}</b>, l'équation est <b>${METALS[oxyMetal].eq}</b>. ${METALS[oxyMetal].prod} L'eau + O₂ provoque la <b>rouille</b> du fer, d'où la perte de vie sur 💧. +${Math.floor(oxyScore/10)+5} XP gagnés !`;
+}
+// controls
+cv.addEventListener('mousemove',e=>{ const r=cv.getBoundingClientRect(); oxyPX=(e.clientX-r.left)*(cv.width/r.width); });
+cv.addEventListener('touchmove',e=>{ e.preventDefault(); const r=cv.getBoundingClientRect(); oxyPX=(e.touches[0].clientX-r.left)*(cv.width/r.width); },{passive:false});
+document.addEventListener('keydown',e=>{ if(!oxyRunning) return; if(e.key==='ArrowLeft') oxyPX-=30; if(e.key==='ArrowRight') oxyPX+=30; });
+
+// ===== VRAI FAUX =====
+const VF=[
+ {t:"L'oxydation est la réaction d'un métal avec le dioxygène.",v:true,c:"Définition exacte du cours."},
+ {t:"La combustion du fer donne une poudre blanche.",v:false,c:"Faux : elle donne Fe₃O₄ noir magnétique. La poudre blanche = Al₂O₃ ou ZnO."},
+ {t:"Fe₃O₄ est attiré par un aimant.",v:true,c:"Vrai : on l'appelle oxyde magnétique."},
+ {t:"L'équation du fer est : 2Fe + O₂ → Fe₃O₄.",v:false,c:"Faux : c'est 3Fe + 2O₂ → Fe₃O₄."},
+ {t:"La lumière éblouissante blanche caractérise l'aluminium.",v:true,c:"Vrai : 4Al+3O₂→2Al₂O₃."},
+ {t:"ZnO est jaune à chaud et blanc à froid.",v:true,c:"Vrai : test classique du zinc."},
+ {t:"Le cuivre chauffé se couvre d'une couche noire CuO.",v:true,c:"Vrai : 2Cu+O₂→2CuO."},
+ {t:"La masse des produits est toujours égale à la masse des réactifs.",v:true,c:"Vrai : loi de Lavoisier."},
+ {t:"La rouille se forme avec du fer + O₂ seulement, sans eau.",v:false,c:"Faux : il faut O₂ + H₂O ensemble."},
+ {t:"Al₂O₃ protège l'aluminium car elle est compacte.",v:true,c:"Vrai : couche protectrice."},
+ {t:"La peinture protège le fer en l'isolant de l'air et de l'eau.",v:true,c:"Vrai : barrière protectrice."},
+ {t:"La galvanisation = recouvrir le fer de zinc.",v:true,c:"Vrai : le zinc se sacrifie et protège."}
+];
+let vfIdx=0, vfScore=0, vfStreak=0, vfTime=60, vfInt=null, vfOn=false;
+function startVF(){ playClick(); vfScore=0; vfStreak=0; vfTime=60; vfOn=true; vfIdx=Math.floor(Math.random()*VF.length); document.getElementById('vfScore').textContent='0'; document.getElementById('vfStreak').textContent='0'; document.getElementById('vfTime').textContent='60'; showVF(); clearInterval(vfInt); vfInt=setInterval(()=>{ vfTime--; document.getElementById('vfTime').textContent=vfTime; if(vfTime<=0){ vfOn=false; clearInterval(vfInt); document.getElementById('vfQ').textContent=`🏁 Fini ! Score ${vfScore} ! +${vfScore*2} XP`; addXP(vfScore*2); playWin(); confetti(30); } },1000); }
+function showVF(){ document.getElementById('vfQ').textContent='❓ '+VF[vfIdx].t; document.getElementById('vfFeedback').textContent=''; }
+function answerVF(val){ if(!vfOn) return; const q=VF[vfIdx]; if(val===q.v){ vfScore++; vfStreak++; playGood(); document.getElementById('vfFeedback').innerHTML='✅ Correct ! '+q.c; } else { vfStreak=0; playBad(); document.getElementById('vfFeedback').innerHTML='❌ Faux ! Correction : '+q.c; } document.getElementById('vfScore').textContent=vfScore; document.getElementById('vfStreak').textContent=vfStreak; if(vfStreak>=3){ addXP(5); } vfIdx=Math.floor(Math.random()*VF.length); setTimeout(showVF,900); }
+
+// ===== QUIZ =====
+const QUIZ=[
+ {cat:"DÉFINITION",q:"Qu'est-ce que l'oxydation d'un métal ?",opts:["Réaction avec l'eau uniquement","Réaction avec le dioxygène O₂","Dissolution dans l'acide","Fusion du métal"],a:1,ex:"Par définition : Métal + O₂ → Oxyde métallique."},
+ {cat:"FER",q:"La combustion de la laine de fer donne :",opts:["Une poudre blanche Al₂O₃","Une boule noire magnétique Fe₃O₄","Une couche noire CuO","De la rouille rouge"],a:1,ex:"Observé au labo : étincelles + produit noir attiré par l'aimant = Fe₃O₄."},
+ {cat:"ÉQUATION",q:"Équilibre : ...Fe + ...O₂ → ...Fe₃O₄. Coefficients ?",opts:["2 ; 1 ; 1","3 ; 2 ; 1","4 ; 3 ; 2","1 ; 1 ; 1"],a:1,ex:"3 Fe (3 atomes) et 2 O₂ (4 atomes O) → 1 Fe₃O₄ (3 Fe + 4 O)."},
+ {cat:"ALUMINIUM",q:"Formule de l'alumine (oxyde d'aluminium) ?",opts:["AlO","Al₂O₃","AlO₂","Al₃O₄"],a:1,ex:"Équation : 4Al + 3O₂ → 2Al₂O₃."},
+ {cat:"ALUMINIUM",q:"Observation de la combustion de l'aluminium ?",opts:["Flamme bleu-vert","Couche noire","Lumière blanche éblouissante","Étincelles + boule magnétique"],a:2,ex:"Flash blanc très lumineux, poudre blanche."},
+ {cat:"ZINC",q:"Combustion du zinc : on observe ?",opts:["Flamme bleu-vert + fumée blanche","Lumière blanche aveuglante","Rien du tout","Explosion jaune"],a:0,ex:"Typique du zinc : flamme bleu-vert, ZnO blanc (jaune à chaud)."},
+ {cat:"ZINC",q:"Équation équilibrée du zinc ?",opts:["Zn + O₂ → ZnO₂","2Zn + O₂ → 2ZnO","Zn + 2O₂ → ZnO₂","4Zn + 3O₂ → 2ZnO"],a:1,ex:"2 Zn et 2 O de chaque côté."},
+ {cat:"CUIVRE",q:"Lame de cuivre chauffée à l'air :",opts:["Reste rouge brillante","Devient blanche","Se couvre de noir (CuO)","Fond en boule magnétique"],a:2,ex:"2Cu + O₂ → 2CuO noir."},
+ {cat:"CUIVRE",q:"Formule de l'oxyde de cuivre formé à chaud ?",opts:["Cu₂O","CuO","CuO₂","Cu₃O₄"],a:1,ex:"C'est CuO, le monoxyde de cuivre noir."},
+ {cat:"MASSE",q:"On brûle 6 g de carbone ? Non... 11,2 g Fe donnent 15,47 g Fe₃O₄. Masse d'O₂ ?",opts:["4,27 g","11,2 g","26,67 g","3,2 g"],a:0,ex:"Lavoisier : m(O₂)=15,47-11,2=4,27 g."},
+ {cat:"ROUILLE",q:"La rouille se forme si :",opts:["Fer + O₂ sec seulement","Fer + eau sans air","Fer + O₂ + H₂O ensemble","Aluminium humide"],a:2,ex:"Corrosion humide nécessite dioxygène ET eau."},
+ {cat:"PROTECTION",q:"Lequel forme une couche protectrice ?",opts:["Fer (rouille)","Cuivre (vert-de-gris)","Aluminium (Al₂O₃)","Tous poreux"],a:2,ex:"Al₂O₃ compacte protège. Rouille poreuse ne protège pas."},
+ {cat:"PROTECTION",q:"Quelle méthode protège le fer ?",opts:["Mouiller chaque jour","Peinture / galvanisation au zinc","Chauffer fort","Grattez la rouille et laissez"],a:1,ex:"Isoler du O₂+H₂O : peinture, graisse, Zn, inox."},
+ {cat:"BILAN",q:"Que dit la loi de Lavoisier ?",opts:["La masse augmente toujours","Rien ne se perd, rien ne se crée, tout se transforme","Les gaz n'ont pas de masse","L'énergie disparaît"],a:1,ex:"Masse réactifs = masse produits, d'où équilibrage."},
+ {cat:"TEST",q:"Comment distinguer Fe₃O₄ des autres oxydes ?",opts:["Il est blanc","Il est attiré par l'aimant","Il est gazeux","Il est vert"],a:1,ex:"Seul l'oxyde magnétique est magnétique 🧲."}
+];
+let qIdx=0,qScore=0,qTimerInt=null,qLeft=20,qAnswered=false;
+function startQuizFromHome(){ showTab('screen-quiz'); startQuiz(); }
+function startQuiz(){ playClick(); qIdx=0; qScore=0; document.getElementById('quizStart').classList.add('hidden'); document.getElementById('quizEnd').classList.add('hidden'); document.getElementById('quizPlay').classList.remove('hidden'); showQuestion(); }
+function showQuestion(){ if(qIdx>=QUIZ.length){ endQuiz(); return; } qAnswered=false; const Q=QUIZ[qIdx]; qLeft=20; document.getElementById('qNum').textContent=(qIdx+1); document.getElementById('qTimer').textContent='20'; document.getElementById('qProgress').style.width=((qIdx)/QUIZ.length*100)+'%'; document.getElementById('qCat').textContent='📚 '+Q.cat; document.getElementById('qText').textContent=(qIdx+1)+'. '+Q.q; const box=document.getElementById('qOpts'); box.innerHTML=''; document.getElementById('qExplain').classList.add('hidden'); document.getElementById('qNextBtn').classList.add('hidden'); Q.opts.forEach((o,i)=>{ const b=document.createElement('button'); b.className='quiz-opt text-left bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-sm font-bold'; b.textContent=String.fromCharCode(65+i)+'. '+o; b.onclick=()=>answerQuiz(i,b); box.appendChild(b); }); clearInterval(qTimerInt); qTimerInt=setInterval(()=>{ qLeft--; document.getElementById('qTimer').textContent=qLeft; if(qLeft<=0){ clearInterval(qTimerInt); answerQuiz(-1,null); } },1000); }
+function answerQuiz(i,btn){ if(qAnswered) return; qAnswered=true; clearInterval(qTimerInt); const Q=QUIZ[qIdx]; const btns=document.getElementById('qOpts').children; for(let k=0;k<btns.length;k++){ btns[k].disabled=true; if(k===Q.a) btns[k].classList.add('correctFlash'); else if(k===i) btns[k].classList.add('wrongFlash'); } const ex=document.getElementById('qExplain'); ex.classList.remove('hidden'); if(i===Q.a){ qScore++; playGood(); ex.style.borderColor='#22c55e'; ex.innerHTML='✅ <b>Bonne réponse !</b> '+Q.ex+' (+1 pt)'; addXP(5); } else { playBad(); ex.style.borderColor='#ef4444'; ex.innerHTML=(i===-1?'⏰ <b>Temps écoulé !</b> ':'❌ <b>Mauvaise réponse.</b> ')+' Correction : <b>'+Q.opts[Q.a]+'</b><br>💡 '+Q.ex; } document.getElementById('qNextBtn').classList.remove('hidden'); }
+function nextQuestion(){ playClick(); qIdx++; showQuestion(); }
+function endQuiz(){ clearInterval(qTimerInt); document.getElementById('quizPlay').classList.add('hidden'); document.getElementById('quizEnd').classList.remove('hidden'); document.getElementById('qProgress').style.width='100%'; const note=Math.round(qScore/QUIZ.length*20); document.getElementById('quizNote').textContent=qScore+'/'+QUIZ.length+' → '+note+'/20'; let msg,emo; if(note>=16){ msg='Excellent ! Niveau examen régional validé 🏆'; emo='🏆'; playWin(); confetti(80); } else if(note>=12){ msg='Bien ! Encore 1-2 révisions et ce sera parfait.'; emo='👏'; playWin(); confetti(40); } else if(note>=10){ msg='Passable. Revois le Labo + Memory.'; emo='💪'; } else { msg='Courage ! Relis le cours et retente.'; emo='📚'; playBad(); } document.getElementById('quizMsg').textContent=msg; document.getElementById('quizEmoji').textContent=emo; addXP(note); const best=parseInt(localStorage.getItem('bestQuiz')||'0'); if(note>best){ localStorage.setItem('bestQuiz',note); } document.getElementById('bestQuiz').textContent=Math.max(best,note); let rev='<b>📖 Corrections :</b>'; QUIZ.forEach((Q,i)=>{ rev+=`<div class="bg-black/40 rounded-lg p-2"><b>${i+1}. ${Q.q}</b><br>✅ ${Q.opts[Q.a]}<br><span class="text-slate-300">${Q.ex}</span></div>`; }); document.getElementById('quizReview').innerHTML=rev; }
+
+// ===== INIT =====
+document.addEventListener('pointerdown',ensureAudio,{once:true});
+updateHUD(); initMemory(); renderBal(); selectLabMetal('Fe'); resizeCanvas();
+document.getElementById('bestOxy').textContent=localStorage.getItem('bestOxy')||'0';
+document.getElementById('bestMem').textContent=localStorage.getItem('bestMem')||'—';
+document.getElementById('bestQuiz').textContent=(localStorage.getItem('bestQuiz')||'—');
+setTimeout(()=>{ document.querySelector('.accordion').classList.add('open'); },500);
+</script>
+</body>
+</html>
